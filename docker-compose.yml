@@ -1,0 +1,94 @@
+# docker-compose.yml — à placer dans un dossier séparé (ex. cesizen-infra/),
+# PAS dans cesizen-api ni cesizen-web.
+#
+# Suppose que les 3 dossiers sont au même niveau :
+#   workspace/cesizen-infra/   (ce fichier + docker/nginx.conf)
+#   workspace/cesizen-api/     (repo backend, Dockerfile à la racine)
+#   workspace/cesizen-web/     (repo frontend, Dockerfile à la racine)
+#
+# Usage : docker compose up --build
+
+services:
+  app:
+    build:
+      context: ../cesizen-api
+      dockerfile: Dockerfile
+    volumes:
+      - ../cesizen-api:/var/www/html
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: cesizen
+      DB_USERNAME: cesizen
+      DB_PASSWORD: secret
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cesizen
+
+  front:
+    build:
+      context: ../cesizen-web
+      dockerfile: Dockerfile
+      target: dev
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ../cesizen-web:/app
+      - front-node-modules:/app/node_modules
+    environment:
+      NUXT_PUBLIC_API_BASE: http://localhost:8080
+    ports:
+      - "3000:3000"
+    networks:
+      - cesizen
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cesizen
+      POSTGRES_USER: cesizen
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cesizen -d cesizen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cesizen
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025" # interface web
+      - "1025:1025" # serveur SMTP
+    networks:
+      - cesizen
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ../cesizen-api:/var/www/html:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - cesizen
+
+volumes:
+  db-data:
+  front-node-modules:
+
+networks:
+  cesizen:
+    driver: bridge
