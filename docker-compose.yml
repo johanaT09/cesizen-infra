@@ -15,6 +15,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ../cesizen-api:/var/www/html
+      - app-vendor:/var/www/html/vendor
     environment:
       APP_ENV: local
       DB_CONNECTION: pgsql
@@ -41,7 +42,7 @@ services:
       - ../cesizen-web:/app
       - front-node-modules:/app/node_modules
     environment:
-      NUXT_PUBLIC_API_BASE: http://localhost:8080
+      NUXT_PUBLIC_API_BASE: http://localhost:8080/api
     ports:
       - "3000:3000"
     networks:
@@ -88,6 +89,7 @@ services:
 volumes:
   db-data:
   front-node-modules:
+  app-vendor:
 
 networks:
   cesizen:
