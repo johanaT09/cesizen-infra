@@ -1,0 +1,67 @@
+services:
+  app:
+    image: ghcr.io/johanat09/cesizen-api:latest
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: cesizen
+      DB_USERNAME: cesizen
+      DB_PASSWORD: ${DB_PASSWORD}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cesizen
+
+  front:
+    image: ghcr.io/johanat09/cesizen-web:latest
+    restart: unless-stopped
+    environment:
+      NUXT_PUBLIC_API_BASE: /api
+    networks:
+      - cesizen
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cesizen
+      POSTGRES_USER: cesizen
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cesizen -d cesizen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cesizen
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+      - front
+    networks:
+      - cesizen
+
+volumes:
+  db-data:
+
+networks:
+  cesizen:
+    driver: bridge
