@@ -31,7 +31,11 @@ services:
         condition: service_healthy
     networks:
       - cesizen
-
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    extra_hosts:
+      - "o4512005819400192.ingest.de.sentry.io:34.120.195.249"
   front:
     build:
       context: ../cesizen-web
@@ -94,3 +98,5 @@ volumes:
 networks:
   cesizen:
     driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1300
